@@ -37,7 +37,7 @@ if [[ ! -e /run/ostree-booted ]]; then
     # downgrade any packages installed/upgraded from the extra package repos
     function list_foreign_rpms {
         dnf list --installed \
-        | grep -e @koji-override -e @testing-farm -e @epel -e @copr: -e @rcmtools \
+        | grep -e @koji-override -e @testing-farm -e @epel -e @copr: -e @rcmtools -e '<unknown>$' \
         | sed 's/ .*//'
     }
     rpms=$(list_foreign_rpms)
@@ -49,33 +49,46 @@ fi
 
 # ------------------------------------------------------------------------------
 
-# replace fedora mirrormanager-based repositories with AWS-based ones, which
-# tend to be a lot more reliable (no checksum errors)
-os_id=$(. /etc/os-release; echo "$ID:$VERSION_ID")
+# replace fedora mirrormanager-based repositories with primary/master ones,
+# which tend to be a lot more reliable
+# - this is to avoid checksum errors that very commonly pop up on mirrormanager
+#   on all mirrors (so trying different mirrors doesn't help and dnf eventually
+#   fails):
+#     Downloading successful, but checksum doesn't match. Calculated: 1abb62...
+#     Expected: a91641...
+function mkrepo {
+    echo "[$1]"
+    echo "name=$1"
+    echo "baseurl=$2"
+    [[ $GPGKEY ]] && echo "gpgkey=$GPGKEY"
+    echo "gpgcheck=1"
+    echo "enabled=${3:-1}"
+}
+os_id=$(. /etc/os-release; echo "$ID")
+os_id_version=$(. /etc/os-release; echo "$ID:$VERSION_ID")
 # 8 is on vault/archive, 10 is currently broken
-if [[ $os_id == centos:9 ]]; then
+if [[ $os_id_version == centos:9 ]]; then
+    GPGKEY=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
     rm -f /etc/yum.repos.d/centos{,-addons}.repo
     for variant in BaseOS AppStream CRB HighAvailability NFV RT ResilientStorage; do
-        echo "[centos-aws-$variant]"
-        echo "name=centos-aws-$variant"
-        echo "baseurl=https://mirror.stream.centos.org/\$stream/$variant/\$basearch/os/"
-        echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
-        echo "gpgcheck=1"
-        echo "enabled=1"
-        echo "[centos-aws-$variant-source]"
-        echo "name=centos-aws-$variant-source"
-        echo "baseurl=https://mirror.stream.centos.org/\$stream/$variant/source/tree/"
-        echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
-        echo "gpgcheck=1"
-        echo "enabled=0"
-        echo "[centos-aws-$variant-debuginfo]"
-        echo "name=centos-aws-$variant-debuginfo"
-        echo "baseurl=https://mirror.stream.centos.org/\$stream/$variant/\$basearch/debug/tree/"
-        echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
-        echo "gpgcheck=1"
-        echo "enabled=0"
+        mkrepo "centos-master-$variant" "https://mirror.stream.centos.org/\$stream/$variant/\$basearch/os/"
+        mkrepo "centos-master-$variant-source" "https://mirror.stream.centos.org/\$stream/$variant/source/tree/" 0
+        mkrepo "centos-master-$variant-debuginfo" "https://mirror.stream.centos.org/\$stream/$variant/\$basearch/debug/tree/" 0
         echo
-    done > /etc/yum.repos.d/centos-aws.repo
+    done > /etc/yum.repos.d/centos-master.repo
+elif [[ $os_id == fedora ]]; then
+    GPGKEY=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-\$releasever-\$basearch
+    rm -f /etc/yum.repos.d/fedora{.repo,-*}
+    {
+        mkrepo "fedora-dl-releases" "https://dl.fedoraproject.org/pub/fedora/linux/releases/\$releasever/Everything/\$basearch/os/"
+        mkrepo "fedora-dl-releases-source" "https://dl.fedoraproject.org/pub/fedora/linux/releases/\$releasever/Everything/source/tree/" 0
+        mkrepo "fedora-dl-releases-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/releases/\$releasever/Everything/\$basearch/debug/tree/" 0
+        # updates is missing the last path element (/os/ or /tree/)
+        mkrepo "fedora-dl-updates" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/"
+        mkrepo "fedora-dl-updates-source" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/source/" 0
+        mkrepo "fedora-dl-updates-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/debug/" 0
+        echo
+    } > /etc/yum.repos.d/fedora-dl.repo
 fi
 
 # ------------------------------------------------------------------------------
