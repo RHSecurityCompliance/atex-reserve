@@ -7,7 +7,7 @@ prepare:
     how: shell
     script: |
         # encode the ssh key via base64 and re-export it for the test
-        encoded=$(base64 <<<"$RESERVE_SSH_PUBKEY")
+        encoded=$(base64 -w 0 <<<"$RESERVE_SSH_PUBKEY")
         echo "TF_RESERVATION_AUTHORIZED_KEYS_BASE64=$encoded" >> "$TMT_PLAN_ENVIRONMENT_FILE"
 
 execute:
