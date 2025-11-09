@@ -32,7 +32,7 @@ if [[ ! -e /run/ostree-booted ]]; then
 
     # clean up packages from extra repos, restoring original vanilla OS (sorta)
     rm -v -f \
-        /etc/yum.repos.d/{tag-repository,*beakerlib*,rcmtools,qa-tools}.repo \
+        /etc/yum.repos.d/{tag-repository*,*beakerlib*,rcmtools,qa-tools}.repo \
         /etc/yum.repos.d/beaker-{client,harness,tasks}.repo
     # downgrade any packages installed/upgraded from the extra package repos
     function list_foreign_rpms {
@@ -102,11 +102,37 @@ fi
 
 # ------------------------------------------------------------------------------
 
-# on RHEL, switch to gpgcheck=1 (because Testing Farm defaults to gpgcheck=0
-# for historical reasons)
-if grep -q '^name=rhel-BaseOS$' /etc/yum.repos.d/rhel.repo 2>/dev/null; then
-    rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-*
-    sed 's/^gpgcheck=0$/gpgcheck=1/' -i /etc/yum.repos.d/rhel.repo
+# on RHEL, TF systems have wildly inconsistent repository configurations;
+# sometimes duplicating beaker-*.repo inside rhel.repo (causing dnf warnings),
+# sometimes with some of the rhel.repo entries disabled, and all with gpgcheck=0
+# and without any gpgkey=
+# get around all of that by trying to extract known-good data and re-create
+# sensible GPG-enabled entries from scratch
+if [[ $os_id == rhel ]]; then
+    gpgkeys=()
+    for key in /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat*; do
+        gpgkeys+=("file://$key")
+    done
+
+    # if beaker-* repos exist, use them and throw away rhel.repo
+    if [[ -f /etc/yum.repos.d/beaker-BaseOS.repo ]]; then
+        rm -f /etc/yum.repos.d/rhel.repo
+
+        for repofile in /etc/yum.repos.d/beaker-{AppStream,BaseOS,CRB,HighAvailability,ResilientStorage,SAP}*.repo; do
+            sed 's/^gpgcheck=0$/gpgcheck=1/' -i "$repofile"
+            if ! grep -q '^gpgkey=' "$repofile"; then
+                # after each gpgcheck=1
+                sed '/^gpgcheck=1$/a'" gpgkey=${gpgkeys[*]}" -i "$repofile"
+            fi
+        done
+
+    # only rhel.repo exists, just enable gpgcheck=1 and add gpgkey=
+    elif [[ -f /etc/yum.repos.d/rhel.repo ]] && grep -q '^name=rhel-BaseOS$' /etc/yum.repos.d/rhel.repo; then
+        sed 's/^gpgcheck=0$/gpgcheck=1/' -i /etc/yum.repos.d/rhel.repo
+        if ! grep -q '^gpgkey=' /etc/yum.repos.d/rhel.repo; then
+            sed '/^gpgcheck=1$/a'" gpgkey=${gpgkeys[*]}" -i /etc/yum.repos.d/rhel.repo
+        fi
+    fi
 fi
 
 # ------------------------------------------------------------------------------
