@@ -32,12 +32,13 @@ if [[ ! -e /run/ostree-booted ]]; then
 
     # clean up packages from extra repos, restoring original vanilla OS (sorta)
     rm -v -f \
-        /etc/yum.repos.d/{tag-repository*,*beakerlib*,rcmtools,qa-tools}.repo \
+        /etc/yum.repos.d/{tag-repository*,*beakerlib*,beaker-harness,rcmtools,rcm-tools,qa-tools}.repo \
         /etc/yum.repos.d/beaker-{client,harness,tasks}.repo
     # downgrade any packages installed/upgraded from the extra package repos
     function list_foreign_rpms {
         dnf list --installed \
-        | grep -e @koji-override -e @testing-farm -e @epel -e @copr: -e @rcmtools -e '<unknown>$' \
+        | grep -e @koji-override -e @testing-farm -e @epel -e @beaker-harness \
+               -e @copr: -e @rcmtools -e @rcm-tools -e '<unknown>$' \
         | sed 's/ .*//'
     }
     rpms=$(list_foreign_rpms)
