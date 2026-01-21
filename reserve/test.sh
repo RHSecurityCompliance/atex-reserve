@@ -90,13 +90,20 @@ elif [[ $os_id == fedora ]]; then
     GPGKEY=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-\$releasever-\$basearch
     rm -f /etc/yum.repos.d/fedora{.repo,-*}
     {
-        mkrepo "fedora-dl-$slug" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/\$basearch/os/" enabled=1
-        mkrepo "fedora-dl-$slug-source" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/source/tree/" enabled=0
-        mkrepo "fedora-dl-$slug-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/\$basearch/debug/tree/" enabled=0
+        mkrepo "fedora-dl-$slug" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/\$basearch/os/" enabled=1 skip_if_unavailable=True
+        mkrepo "fedora-dl-$slug-source" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/source/tree/" enabled=0 skip_if_unavailable=True
+        mkrepo "fedora-dl-$slug-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/\$basearch/debug/tree/" enabled=0 skip_if_unavailable=True
         # updates is missing the last path element (/os/ or /tree/)
         mkrepo "fedora-dl-updates" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/" enabled=1 skip_if_unavailable=True
         mkrepo "fedora-dl-updates-source" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/source/" enabled=0 skip_if_unavailable=True
         mkrepo "fedora-dl-updates-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/debug/" enabled=0 skip_if_unavailable=True
+        # archived updates in case this Fedora version is too old
+        mkrepo "fedora-dl-updates" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/" enabled=1 skip_if_unavailable=True
+        mkrepo "fedora-dl-updates-source" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/source/" enabled=0 skip_if_unavailable=True
+        mkrepo "fedora-dl-updates-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/debug/" enabled=0 skip_if_unavailable=True
+        mkrepo "https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Everything/\$basearch/" enabled=1 skip_if_unavailable=True
+        mkrepo "https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Everything/source/tree/" enabled=0 skip_if_unavailable=True
+        mkrepo "https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Everything/\$basearch/debug/" enabled=0 skip_if_unavailable=True
         echo
     } > /etc/yum.repos.d/fedora-dl.repo
 fi
