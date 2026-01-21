@@ -75,7 +75,7 @@ function mkrepo {
     done
 }
 # 8 is on vault/archive, 10 is currently broken
-if [[ $os_id_version == centos:9 ]]; then
+if [[ $os_id_version == centos:9 || $os_id_version == centos:10 ]]; then
     GPGKEY=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
     rm -f /etc/yum.repos.d/centos{,-addons}.repo
     for variant in BaseOS AppStream CRB HighAvailability NFV RT ResilientStorage; do
