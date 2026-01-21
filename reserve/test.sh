@@ -2,6 +2,12 @@
 
 set -e -x
 
+os_id=$(. /etc/os-release; echo "$ID")
+os_id_version=$(. /etc/os-release; echo "$ID:$VERSION_ID")
+os_id_type=$(. /etc/os-release; echo "$RELEASE_TYPE")
+
+# ------------------------------------------------------------------------------
+
 # always reboot into the same OS entry (unless otherwise overriden)
 #
 # we're executing efibootmgr here instead of just checking its existence
@@ -68,9 +74,6 @@ function mkrepo {
         echo "$additional"
     done
 }
-os_id=$(. /etc/os-release; echo "$ID")
-os_id_version=$(. /etc/os-release; echo "$ID:$VERSION_ID")
-os_id_type=$(. /etc/os-release; echo "$RELEASE_TYPE")
 # 8 is on vault/archive, 10 is currently broken
 if [[ $os_id_version == centos:9 ]]; then
     GPGKEY=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
@@ -81,31 +84,6 @@ if [[ $os_id_version == centos:9 ]]; then
         mkrepo "centos-master-$variant-debuginfo" "https://mirror.stream.centos.org/\$stream/$variant/\$basearch/debug/tree/" enabled=0
         echo
     done > /etc/yum.repos.d/centos-master.repo
-elif [[ $os_id == fedora ]]; then
-    case "$os_id_type" in
-        stable) slug=releases ;;
-        development) slug=development ;;
-        *) echo "unknown RELEASE_TYPE: $os_id_type" >&2; exit 1 ;;
-    esac
-    GPGKEY=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-\$releasever-\$basearch
-    rm -f /etc/yum.repos.d/fedora{.repo,-*}
-    {
-        mkrepo "fedora-dl-$slug" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/\$basearch/os/" enabled=1 skip_if_unavailable=True
-        mkrepo "fedora-dl-$slug-source" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/source/tree/" enabled=0 skip_if_unavailable=True
-        mkrepo "fedora-dl-$slug-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/$slug/\$releasever/Everything/\$basearch/debug/tree/" enabled=0 skip_if_unavailable=True
-        # updates is missing the last path element (/os/ or /tree/)
-        mkrepo "fedora-dl-updates" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/" enabled=1 skip_if_unavailable=True
-        mkrepo "fedora-dl-updates-source" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/source/" enabled=0 skip_if_unavailable=True
-        mkrepo "fedora-dl-updates-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/debug/" enabled=0 skip_if_unavailable=True
-        # archived updates in case this Fedora version is too old
-        mkrepo "fedora-dl-updates" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/" enabled=1 skip_if_unavailable=True
-        mkrepo "fedora-dl-updates-source" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/source/" enabled=0 skip_if_unavailable=True
-        mkrepo "fedora-dl-updates-debuginfo" "https://dl.fedoraproject.org/pub/fedora/linux/updates/\$releasever/Everything/\$basearch/debug/" enabled=0 skip_if_unavailable=True
-        mkrepo "https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Everything/\$basearch/" enabled=1 skip_if_unavailable=True
-        mkrepo "https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Everything/source/tree/" enabled=0 skip_if_unavailable=True
-        mkrepo "https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Everything/\$basearch/debug/" enabled=0 skip_if_unavailable=True
-        echo
-    } > /etc/yum.repos.d/fedora-dl.repo
 fi
 
 # ------------------------------------------------------------------------------
