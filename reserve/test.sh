@@ -3,8 +3,7 @@
 set -e -x
 
 os_id=$(. /etc/os-release; echo "$ID")
-os_id_version=$(. /etc/os-release; echo "$ID:$VERSION_ID")
-os_id_type=$(. /etc/os-release; echo "$RELEASE_TYPE")
+os_version=$(. /etc/os-release; echo "$VERSION_ID")
 
 # ------------------------------------------------------------------------------
 
@@ -75,10 +74,14 @@ function mkrepo {
     done
 }
 # 8 is on vault/archive, 10 is currently broken
-if [[ $os_id_version == centos:9 || $os_id_version == centos:10 ]]; then
+if [[ $os_id == centos && ( $os_version == 9 || $os_version == 10 ) ]]; then
+    case "$os_version" in
+        9)  variants="BaseOS AppStream CRB HighAvailability NFV RT ResilientStorage" ;;
+        10) variants="BaseOS AppStream CRB HighAvailability NFV RT" ;;
+    esac
     GPGKEY=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
     rm -f /etc/yum.repos.d/centos{,-addons}.repo
-    for variant in BaseOS AppStream CRB HighAvailability NFV RT ResilientStorage; do
+    for variant in $variants; do
         mkrepo "centos-master-$variant" "https://mirror.stream.centos.org/\$stream/$variant/\$basearch/os/" enabled=1
         mkrepo "centos-master-$variant-source" "https://mirror.stream.centos.org/\$stream/$variant/source/tree/" enabled=0
         mkrepo "centos-master-$variant-debuginfo" "https://mirror.stream.centos.org/\$stream/$variant/\$basearch/debug/tree/" enabled=0
