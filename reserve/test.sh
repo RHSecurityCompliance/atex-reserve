@@ -144,6 +144,8 @@ fi
 
 # ------------------------------------------------------------------------------
 
+sleep 1800
+
 # install SSH key
 if [[ $RESERVE_SSH_PUBKEY ]]; then
     mkdir -p ~/.ssh
