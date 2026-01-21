@@ -137,8 +137,8 @@ echo -n > /etc/tmpfiles.d/restraint.conf
 
 # upgrade to latest available packages from each given stream
 # - this fixes issues with outdated packages, and overall isn't that big,
-#   typically 10-30 packages are upgraded (CS) or even 0 (Fedora)
-if [[ $os_id == centos ]]; then
+#   typically 10-30 packages are upgraded
+if [[ $os_id == rhel || $os_id == centos ]]; then
     dnf upgrade -y --skip-broken || true
 fi
 
